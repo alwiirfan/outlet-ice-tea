@@ -1,10 +1,9 @@
 import {
   loginCashierSchemaRequest,
   newAuthCashierSchemaRequest,
-  refreshCashierTokenSchemaRequest,
 } from "../dto/request/auth-request.js";
 import { validate } from "../utils/validation-util.js";
-import db from "../config/database.js";
+import db from "../configs/database.js";
 import { v4 as uuid } from "uuid";
 import { ResponseError } from "../errors/response-error.js";
 import bcrypt from "bcrypt";
@@ -238,7 +237,7 @@ const loginCashier = async (request) => {
   }
 };
 
-const refreshCashierToken = async (request) => {
+const refreshToken = async (request) => {
   try {
     // TODO find user credential by request cookie with name "refreshToken"
     const userCredential = await db.models.userCredentials.findOne({
@@ -283,28 +282,6 @@ const refreshCashierToken = async (request) => {
   }
 };
 
-// TODO to register cashier response
-const toRegisterCashierResponse = (cashier, userCredential, role) => {
-  return {
-    cashierId: cashier.id,
-    fullName: cashier.full_name,
-    callName: cashier.call_name,
-    phoneNumber: cashier.phone_number,
-    street: cashier.street,
-    city: cashier.city,
-    province: cashier.province,
-    country: cashier.country,
-    postalCode: cashier.postal_code,
-    created_at: cashier.created_at,
-    updated_at: cashier.updated_at !== null ? cashier.updated_at : null,
-    userCredential: {
-      username: userCredential.username,
-      email: userCredential.email,
-    },
-    roles: [role.role],
-  };
-};
-
 const logout = async (refreshToken) => {
   if (!refreshToken) {
     throw new ResponseError(204, "no content of refresh token");
@@ -336,4 +313,26 @@ const logout = async (refreshToken) => {
   return;
 };
 
-export default { registerCashier, loginCashier, refreshCashierToken, logout };
+// TODO to register cashier response
+const toRegisterCashierResponse = (cashier, userCredential, role) => {
+  return {
+    cashierId: cashier.id,
+    fullName: cashier.full_name,
+    callName: cashier.call_name,
+    phoneNumber: cashier.phone_number,
+    street: cashier.street,
+    city: cashier.city,
+    province: cashier.province,
+    country: cashier.country,
+    postalCode: cashier.postal_code,
+    created_at: cashier.created_at,
+    updated_at: cashier.updated_at !== null ? cashier.updated_at : null,
+    userCredential: {
+      username: userCredential.username,
+      email: userCredential.email,
+    },
+    roles: [role.role],
+  };
+};
+
+export default { registerCashier, loginCashier, refreshToken, logout };

@@ -18,6 +18,10 @@ const Admin = {
     allowNull: false,
     unique: true,
   },
+  pin: {
+    type: Sequelize.STRING(6),
+    allowNull: false,
+  },
   created_at: {
     type: Sequelize.DATE,
     allowNull: false,

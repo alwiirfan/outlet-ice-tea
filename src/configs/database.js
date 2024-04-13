@@ -1,8 +1,8 @@
 import { Sequelize } from "sequelize";
-import { logger } from "../config/logger.js";
+import { logger } from "../configs/logger.js";
 import "dotenv/config";
 
-export const db = new Sequelize(
+const db = new Sequelize(
   process.env.DB_NAME,
   process.env.DB_USER,
   process.env.DB_PASSWORD,

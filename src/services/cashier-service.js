@@ -1,7 +1,7 @@
 import { validate } from "../utils/validation-util.js";
-import {} from "../dto/request/cashier-request.js";
+import { updateCashierSchemaRequest } from "../dto/request/cashier-request.js";
 import { ResponseError } from "../errors/response-error.js";
-import db from "../config/database.js";
+import db from "../configs/database.js";
 import { Op } from "sequelize";
 
 const create = async (request, transaction = null) => {
@@ -187,6 +187,56 @@ const getAll = async (request, page, limit) => {
   };
 };
 
+const update = async (request) => {
+  let transaction;
+
+  try {
+    transaction = await db.transaction();
+
+    const updatedCashierRequest = validate(updateCashierSchemaRequest, request);
+
+    const cashier = await db.models.cashiers.findOne(
+      {
+        where: { id: updatedCashierRequest.id },
+      },
+      { transaction }
+    );
+
+    if (!cashier) {
+      throw new ResponseError(404, "Cashier not found");
+    }
+
+    const updatedCashier = await db.models.cashiers.update(
+      {
+        full_name: updatedCashierRequest.fullName,
+        call_name: updatedCashierRequest.callName,
+        phone_number: updatedCashierRequest.phoneNumber,
+        street: updatedCashierRequest.street,
+        city: updatedCashierRequest.city,
+        province: updatedCashierRequest.province,
+        country: updatedCashierRequest.country,
+        user_id: updatedCashierRequest.userId,
+        postal_code: updatedCashierRequest.postalCode,
+        created_at: updatedCashierRequest.createdAt,
+      },
+      {
+        where: { id: cashier.id },
+      },
+      { transaction }
+    );
+
+    await transaction.commit();
+
+    return toCashierResponse(updatedCashier);
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
+
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
 const toCashierResponse = (cashier) => {
   return {
     id: cashier.id,
@@ -197,6 +247,7 @@ const toCashierResponse = (cashier) => {
     city: cashier.city,
     province: cashier.province,
     country: cashier.country,
+    userId: cashier.user_id,
     postalCode: cashier.postal_code,
     created_at: cashier.created_at,
     updated_at: cashier.updated_at !== null ? cashier.updated_at : null,
@@ -208,4 +259,5 @@ export default {
   getByPhoneNumber,
   getById,
   getAll,
+  update,
 };

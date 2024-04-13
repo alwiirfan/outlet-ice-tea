@@ -3,10 +3,11 @@ import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import db from "./models/index.js";
-import { logger } from "./config/logger.js";
+import { logger } from "./configs/logger.js";
 import { cashierRouter } from "./routes/cashier-route.js";
 import { adminRouter } from "./routes/admin-route.js";
 import { verifyRouter } from "./routes/verify-route.js";
+import { publicRouter } from "./routes/public-route.js";
 
 const app = express();
 app.use(cors());
@@ -29,9 +30,7 @@ db.authenticate()
   });
 
 app.use(cookieParser());
-app.use(verifyRouter);
-app.use(cashierRouter);
-app.use(adminRouter);
+app.use(publicRouter, verifyRouter, cashierRouter, adminRouter);
 
 app.listen(process.env.SERVER_PORT, () => {
   logger.info(`Server is running on port ${process.env.SERVER_PORT}`);

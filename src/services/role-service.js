@@ -1,6 +1,6 @@
 import { newRoleSchemaRequest } from "../dto/request/role-request.js";
 import { ResponseError } from "../errors/response-error.js";
-import db from "../config/database.js";
+import db from "../configs/database.js";
 import { validate } from "../utils/validation-util.js";
 import { v4 as uuid } from "uuid";
 

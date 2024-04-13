@@ -1,19 +1,5 @@
 import cashierService from "../services/cashier-service.js";
 
-const create = async (req, res, next) => {
-  try {
-    const newCashier = await cashierService.create(req.body);
-    res.status(201).json({
-      status: 201,
-      message: "Cashier created successfully",
-      data: newCashier,
-    });
-  } catch (error) {
-    const status = error.status || 500;
-    next(res.status(status).json({ status: status, message: error.message }));
-  }
-};
-
 const getById = async (req, res, next) => {
   try {
     const cashier = await cashierService.getById(req.params.id);
@@ -55,7 +41,21 @@ const getAll = async (req, res, next) => {
       page: cashiers.page,
       limit: cashiers.limit,
       totalRows: cashiers.totalRows,
-      totalPages: cashiers.totalPage,
+      totalPage: cashiers.totalPage,
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
+  }
+};
+
+const update = async (req, res, next) => {
+  try {
+    const cashier = await cashierService.update(req.body);
+    res.status(200).json({
+      status: 200,
+      message: "Cashier updated successfully",
+      data: cashier,
     });
   } catch (error) {
     const status = error.status || 500;
@@ -64,7 +64,7 @@ const getAll = async (req, res, next) => {
 };
 
 export default {
-  create,
   getById,
   getAll,
+  update,
 };

@@ -1,9 +1,9 @@
-import db from "../config/database.js";
+import db from "../configs/database.js";
 import UserCredential from "./user-credentials.js";
 import Role from "./roles.js";
 import Cashier from "./cashiers.js";
 import Admin from "./admins.js";
-import { logger } from "../config/logger.js";
+import { logger } from "../configs/logger.js";
 
 const userCredentials = db.define("userCredentials", UserCredential, {
   tableName: "user_credentials",
@@ -63,12 +63,14 @@ roles.belongsToMany(userCredentials, {
 // One-to-One relationship between users and cashiers
 userCredentials.hasOne(cashiers, {
   foreignKey: "user_id",
+  as: "cashier",
   onDelete: "RESTRICT",
   onUpdate: "CASCADE",
 });
 
 cashiers.belongsTo(userCredentials, {
   foreignKey: "user_id",
+  as: "user",
   onDelete: "RESTRICT",
   onUpdate: "CASCADE",
 });
@@ -76,12 +78,14 @@ cashiers.belongsTo(userCredentials, {
 // One-to-One relationship between users and admins
 userCredentials.hasOne(admins, {
   foreignKey: "user_id",
+  as: "admin",
   onDelete: "RESTRICT",
   onUpdate: "CASCADE",
 });
 
 admins.belongsTo(userCredentials, {
   foreignKey: "user_id",
+  as: "user",
   onDelete: "RESTRICT",
   onUpdate: "CASCADE",
 });

@@ -40,11 +40,9 @@ const loginCashier = async (req, res, next) => {
   }
 };
 
-const refreshCashierToken = async (req, res, next) => {
+const refreshToken = async (req, res, next) => {
   try {
-    const response = await authService.refreshCashierToken(
-      req.cookies.refreshToken
-    );
+    const response = await authService.refreshToken(req.cookies.refreshToken);
 
     res.status(200).json({
       status: 200,
@@ -78,6 +76,6 @@ const logout = async (req, res, next) => {
 export default {
   registerCashier,
   loginCashier,
-  refreshCashierToken,
+  refreshToken,
   logout,
 };

@@ -46,6 +46,7 @@ const verifyTokenCashier = (req, res, next) => {
     req.username = decoded.username;
     req.email = decoded.email;
     req.role = decoded.role;
+    req.sub = decoded.sub;
     next();
   } catch (error) {
     return res.status(401).json({ status: 401, message: "Invalid token" });
@@ -72,6 +73,7 @@ const verifyTokenAdmin = (req, res, next) => {
     req.username = decoded.username;
     req.email = decoded.email;
     req.role = decoded.role;
+    req.sub = decoded.sub;
     next();
   } catch (error) {
     return res.status(401).json({ status: 401, message: "Invalid token" });
