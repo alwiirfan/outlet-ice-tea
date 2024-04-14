@@ -3,6 +3,7 @@ import { ResponseError } from "../errors/response-error.js";
 import db from "../configs/database.js";
 import { validate } from "../utils/validation-util.js";
 import { v4 as uuid } from "uuid";
+import { Op } from "sequelize";
 
 const create = async (request) => {
   const requestRole = validate(newRoleSchemaRequest, request);
@@ -31,6 +32,49 @@ const create = async (request) => {
   };
 };
 
+const getAll = async (request, page, limit) => {
+  const { role } = request;
+
+  const offset = page * limit;
+
+  const totalRows = await db.models.roles.count({
+    [Op.or]: [
+      {
+        role: {
+          [Op.like]: `%${role}%`,
+        },
+      },
+    ],
+  });
+
+  const totalPage = Math.ceil(totalRows / limit);
+
+  const roles = await db.models.roles.findAll({
+    where: {
+      [Op.or]: [
+        {
+          role: {
+            [Op.like]: `%${role}%`,
+          },
+        },
+      ],
+    },
+    offset: offset,
+    limit: limit,
+    order: [["role", "ASC"]],
+  });
+
+  const responses = roles.map((role) => toRoleResponse(role));
+
+  return {
+    data: responses,
+    page: page,
+    limit: limit,
+    totalRows: totalRows,
+    totalPage: totalPage,
+  };
+};
+
 const getByRoleName = async (roleName, transaction = null) => {
   try {
     let options = {};
@@ -56,4 +100,13 @@ const getByRoleName = async (roleName, transaction = null) => {
   }
 };
 
-export default { create, getByRoleName };
+const toRoleResponse = (role) => {
+  return {
+    id: role.id,
+    role: role.role,
+    created_at: role.created_at,
+    updated_at: role.updated_at !== null ? role.updated_at : null,
+  };
+};
+
+export default { create, getAll, getByRoleName };

@@ -14,6 +14,7 @@ adminRouter.post(
 );
 
 adminRouter.post("/api/v1/roles", verifyTokenAdmin, roleController.create);
+adminRouter.get("/api/v1/roles", verifyTokenAdmin, roleController.getAll);
 
 adminRouter.get("/api/v1/cashiers", verifyTokenAdmin, cashierController.getAll);
 
