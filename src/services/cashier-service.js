@@ -188,53 +188,29 @@ const getAll = async (request, page, limit) => {
 };
 
 const update = async (request) => {
-  let transaction;
+  const updateCashierRequest = validate(updateCashierSchemaRequest, request);
 
-  try {
-    transaction = await db.transaction();
+  const cashier = await db.models.cashiers.findOne({
+    where: { id: updateCashierRequest.id },
+  });
 
-    const updatedCashierRequest = validate(updateCashierSchemaRequest, request);
-
-    const cashier = await db.models.cashiers.findOne(
-      {
-        where: { id: updatedCashierRequest.id },
-      },
-      { transaction }
-    );
-
-    if (!cashier) {
-      throw new ResponseError(404, "Cashier not found");
-    }
-
-    const updatedCashier = await db.models.cashiers.update(
-      {
-        full_name: updatedCashierRequest.fullName,
-        call_name: updatedCashierRequest.callName,
-        phone_number: updatedCashierRequest.phoneNumber,
-        street: updatedCashierRequest.street,
-        city: updatedCashierRequest.city,
-        province: updatedCashierRequest.province,
-        country: updatedCashierRequest.country,
-        user_id: updatedCashierRequest.userId,
-        postal_code: updatedCashierRequest.postalCode,
-        created_at: updatedCashierRequest.createdAt,
-      },
-      {
-        where: { id: cashier.id },
-      },
-      { transaction }
-    );
-
-    await transaction.commit();
-
-    return toCashierResponse(updatedCashier);
-  } catch (error) {
-    if (transaction) {
-      transaction.rollback();
-    }
-
-    throw new ResponseError(error.status, error.message);
+  if (!cashier) {
+    throw new ResponseError(404, "Cashier not found");
   }
+
+  cashier.full_name = updateCashierRequest.fullName;
+  cashier.call_name = updateCashierRequest.callName;
+  cashier.phone_number = updateCashierRequest.phoneNumber;
+  cashier.street = updateCashierRequest.street;
+  cashier.city = updateCashierRequest.city;
+  cashier.province = updateCashierRequest.province;
+  cashier.country = updateCashierRequest.country;
+  cashier.postal_code = updateCashierRequest.postalCode;
+  cashier.updated_at = new Date();
+
+  const updatedCashier = await cashier.save();
+
+  return toCashierResponse(updatedCashier);
 };
 
 const toCashierResponse = (cashier) => {

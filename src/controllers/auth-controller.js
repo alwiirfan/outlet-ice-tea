@@ -40,13 +40,53 @@ const loginCashier = async (req, res, next) => {
   }
 };
 
+const registerAdmin = async (req, res, next) => {
+  try {
+    const response = await authService.registerAdmin(req.body);
+
+    res.status(201).json({
+      status: 201,
+      message: "Admin created successfully",
+      data: response,
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
+  }
+};
+
+const loginAdmin = async (req, res, next) => {
+  try {
+    const response = await authService.loginAdmin(req.body);
+
+    res.cookie("refreshToken", response.refreshToken, {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+      secure: process.env.NODE_ENV === "production",
+    });
+
+    res.status(201).json({
+      status: 201,
+      message: "Admin logged in successfully",
+      data: {
+        username: response.username,
+        accessToken: response.accessToken,
+        roles: response.roles,
+      },
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
+  }
+};
+
 const refreshToken = async (req, res, next) => {
   try {
     const response = await authService.refreshToken(req.cookies.refreshToken);
 
     res.status(200).json({
       status: 200,
-      message: "Cashier token refreshed successfully",
+      message: "Token refreshed successfully",
       data: {
         accessToken: response.accessToken,
       },
@@ -76,6 +116,8 @@ const logout = async (req, res, next) => {
 export default {
   registerCashier,
   loginCashier,
+  registerAdmin,
+  loginAdmin,
   refreshToken,
   logout,
 };

@@ -1,4 +1,3 @@
-import { request } from "express";
 import db from "../configs/database.js";
 import { ResponseError } from "../errors/response-error.js";
 import { validate } from "../utils/validation-util.js";
@@ -17,6 +16,7 @@ const create = async (request, transaction = null) => {
         id: request.id,
         full_name: request.fullName,
         call_name: request.callName,
+        pin: request.pin,
         phone_number: request.phoneNumber,
         user_id: request.userId,
         created_at: request.createdAt,
@@ -60,51 +60,25 @@ const getById = async (id) => {
 };
 
 const update = async (request) => {
-  let transaction;
+  const updateAdminRequest = validate(updateAdminSchemaRequest, request);
 
-  try {
-    transaction = db.transaction();
+  const admin = await db.models.admins.findOne({
+    where: { id: updateAdminRequest.id },
+  });
 
-    const updateAdminRequest = validate(updateAdminSchemaRequest, request);
-
-    const admin = await db.models.admins.findOne(
-      {
-        where: {
-          id: updateAdminRequest.id,
-        },
-      },
-      { transaction }
-    );
-
-    if (!admin) {
-      throw new ResponseError(404, "Admin not found");
-    }
-
-    const updatedAdmin = await db.models.admins.update(
-      {
-        full_name: updateAdminRequest.fullName,
-        call_name: updateAdminRequest.callName,
-        pin: updateAdminRequest.pin,
-        phone_number: updateAdminRequest.phoneNumber,
-      },
-      {
-        where: {
-          id: admin.id,
-        },
-      },
-      { transaction }
-    );
-
-    await transaction.commit();
-
-    return toAdminResponse(updatedAdmin);
-  } catch (error) {
-    if (transaction) {
-      transaction.rollback();
-    }
-
-    throw new ResponseError(error.status, error.message);
+  if (!admin) {
+    throw new ResponseError(404, "Admin not found");
   }
+
+  admin.full_name = updateAdminRequest.fullName;
+  admin.call_name = updateAdminRequest.callName;
+  admin.pin = updateAdminRequest.pin;
+  admin.phone_number = updateAdminRequest.phoneNumber;
+  admin.updated_at = new Date();
+
+  const updatedAdmin = await admin.save();
+
+  return toAdminResponse(updatedAdmin);
 };
 
 const toAdminResponse = (admin) => {
@@ -112,6 +86,7 @@ const toAdminResponse = (admin) => {
     id: admin.id,
     fullName: admin.full_name,
     callName: admin.call_name,
+    pin: admin.pin,
     phoneNumber: admin.phone_number,
     userId: admin.user_id,
     createdAt: admin.created_at,

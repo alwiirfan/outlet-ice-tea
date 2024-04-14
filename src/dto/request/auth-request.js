@@ -36,6 +36,39 @@ const loginCashierSchemaRequest = Joi.object({
     .required(),
 });
 
+const newAuthAdminSchemaRequest = Joi.object({
+  username: Joi.string().min(4).max(100).required(),
+  email: Joi.string()
+    .min(4)
+    .max(100)
+    .email({ minDomainSegments: 2, tlds: { allow: ["com", "net"] } })
+    .required(),
+  password: Joi.string()
+    .min(4)
+    .max(100)
+    .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$"))
+    .required(),
+  confirmPassword: Joi.string()
+    .min(4)
+    .max(100)
+    .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$"))
+    .required(),
+  fullName: Joi.string().min(4).max(100).required(),
+  callName: Joi.string().required(),
+  phoneNumber: Joi.string().min(2).max(20).required(),
+  pin: Joi.string().min(6).max(6).required(),
+});
+
+const loginAdminSchemaRequest = Joi.object({
+  username: Joi.string().min(4).max(100).required(),
+  password: Joi.string()
+    .min(4)
+    .max(100)
+    .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$"))
+    .required(),
+  pin: Joi.string().min(6).max(6).required(),
+});
+
 const refreshCashierTokenSchemaRequest = Joi.object({
   refreshToken: Joi.string().required(),
 });
@@ -43,5 +76,7 @@ const refreshCashierTokenSchemaRequest = Joi.object({
 export {
   newAuthCashierSchemaRequest,
   loginCashierSchemaRequest,
+  newAuthAdminSchemaRequest,
+  loginAdminSchemaRequest,
   refreshCashierTokenSchemaRequest,
 };

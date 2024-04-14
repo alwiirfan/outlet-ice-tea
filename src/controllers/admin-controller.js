@@ -1,8 +1,9 @@
-import adminService from "../services/admin-service";
+import adminService from "../services/admin-service.js";
 
 const getById = async (req, res, next) => {
   try {
     const admin = await adminService.getById(req.params.id);
+
     res.status(200).json({
       status: 200,
       message: "Admin retrieved successfully",
@@ -17,6 +18,7 @@ const getById = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const admin = await adminService.update(req.body);
+
     res.status(200).json({
       status: 200,
       message: "Admin updated successfully",

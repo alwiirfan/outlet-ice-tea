@@ -1,5 +1,7 @@
 import {
+  loginAdminSchemaRequest,
   loginCashierSchemaRequest,
+  newAuthAdminSchemaRequest,
   newAuthCashierSchemaRequest,
 } from "../dto/request/auth-request.js";
 import { validate } from "../utils/validation-util.js";
@@ -11,6 +13,7 @@ import roleService from "./role-service.js";
 import cashierService from "./cashier-service.js";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
+import adminService from "./admin-service.js";
 
 const registerCashier = async (request) => {
   // TODO intialize transaction
@@ -237,6 +240,227 @@ const loginCashier = async (request) => {
   }
 };
 
+const registerAdmin = async (request) => {
+  // TODO intialize transaction
+  let transaction;
+
+  try {
+    // TODO start transaction
+    transaction = await db.transaction();
+
+    // TODO validate request
+    const registerAdminRequest = validate(newAuthAdminSchemaRequest, request);
+
+    if (
+      registerAdminRequest.password !== registerAdminRequest.confirmPassword
+    ) {
+      throw new ResponseError(400, "Passwords do not match");
+    }
+
+    // TODO get user by username
+    const existingUser = await db.models.userCredentials.findOne(
+      {
+        where: {
+          username: registerAdminRequest.username,
+        },
+      },
+      transaction
+    );
+
+    if (existingUser) {
+      throw new ResponseError(409, "Admin already exists");
+    }
+
+    // TODO hash password
+    const hashedPassword = await bcrypt.hash(registerAdminRequest.password, 10);
+
+    // TODO create user credential
+    const userCredential = await db.models.userCredentials.create(
+      {
+        id: uuid().toString(),
+        username: registerAdminRequest.username,
+        email: registerAdminRequest.email,
+        password: hashedPassword,
+        created_at: new Date(),
+      },
+      {
+        transaction,
+      }
+    );
+
+    const role = await roleService.getByRoleName("ADMIN", transaction);
+
+    await db.models.user_roles.create(
+      {
+        user_id: userCredential.id,
+        role_id: role.id,
+        created_at: new Date(),
+      },
+      {
+        transaction,
+      }
+    );
+
+    // TODO get admin by pin
+    const existingAdmin = await adminService.getByPin(
+      registerAdminRequest.pin,
+      transaction
+    );
+
+    if (existingAdmin) {
+      throw new ResponseError(409, "Admin already exists");
+    }
+
+    // TODO create admin
+    const admin = {
+      id: uuid().toString(),
+      fullName: registerAdminRequest.fullName,
+      callName: registerAdminRequest.callName,
+      pin: registerAdminRequest.pin,
+      phoneNumber: registerAdminRequest.phoneNumber,
+      userId: userCredential.id,
+      createdAt: new Date(),
+    };
+
+    const createdAdmin = await adminService.create(admin, transaction);
+
+    // TODO commit transaction
+    await transaction.commit();
+
+    // TODO return response
+    return toAdminResponse(createdAdmin, userCredential, role);
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
+
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
+const loginAdmin = async (request) => {
+  let transaction;
+
+  try {
+    transaction = await db.transaction();
+
+    const loginAdminRequest = validate(loginAdminSchemaRequest, request);
+
+    // TODO get user credential by username
+    const userCredential = await db.models.userCredentials.findOne(
+      {
+        where: {
+          username: loginAdminRequest.username,
+        },
+      },
+      transaction
+    );
+
+    if (!userCredential) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    // TODO compare password
+    const isPasswordValid = await bcrypt.compare(
+      loginAdminRequest.password,
+      userCredential.password
+    );
+
+    if (!isPasswordValid) {
+      throw new ResponseError(401, "Authentication failed");
+    }
+
+    let authorities = [];
+
+    const roles = await userCredential.getUserRoles();
+
+    const role = roles.find((role) => role.role === "ADMIN");
+
+    authorities.push(role.role.toUpperCase());
+
+    if (!role.role) {
+      throw new ResponseError(
+        401,
+        "Authentication failed for role: " + role.role
+      );
+    }
+
+    // TODO get admin by pin
+    const admin = await adminService.getByPin(
+      loginAdminRequest.pin,
+      transaction
+    );
+
+    if (!admin) {
+      throw new ResponseError(401, "Authentication failed");
+    }
+
+    // TODO generate access token
+    const accessToken = jwt.sign(
+      {
+        id: userCredential.id,
+        username: userCredential.username,
+        email: userCredential.email,
+        role: role.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        algorithm: "HS256",
+        expiresIn: process.env.JWT_EXPIRES_IN,
+        subject: userCredential.username,
+      }
+    );
+
+    // TODO generate refresh token
+    const refreshToken = jwt.sign(
+      {
+        id: userCredential.id,
+        username: userCredential.username,
+        email: userCredential.email,
+        role: role.role,
+      },
+      process.env.JWT_REFRESH_SECRET,
+      {
+        algorithm: "HS256",
+        expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN,
+        subject: userCredential.username,
+      }
+    );
+
+    // TODO update refresh token
+    await db.models.userCredentials.update(
+      {
+        refresh_token: refreshToken,
+        updated_at: new Date(),
+      },
+      {
+        where: {
+          id: userCredential.id,
+        },
+      },
+      transaction
+    );
+
+    // TODO commit transaction
+    await transaction.commit();
+
+    // TODO return response
+    return {
+      username: userCredential.username,
+      pin: admin.pin,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      roles: authorities,
+    };
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
+
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
 const refreshToken = async (request) => {
   try {
     // TODO find user credential by request cookie with name "refreshToken"
@@ -335,4 +559,29 @@ const toRegisterCashierResponse = (cashier, userCredential, role) => {
   };
 };
 
-export default { registerCashier, loginCashier, refreshToken, logout };
+// TODO to admin response
+const toAdminResponse = (admin, userCredential, role) => {
+  return {
+    adminId: admin.id,
+    fullName: admin.full_name,
+    callName: admin.call_name,
+    pin: admin.pin,
+    phoneNumber: admin.phone_number,
+    createdAt: admin.created_at,
+    updatedAt: admin.updated_at !== null ? admin.updated_at : null,
+    userCredential: {
+      username: userCredential.username,
+      email: userCredential.email,
+    },
+    roles: [role.role],
+  };
+};
+
+export default {
+  registerCashier,
+  loginCashier,
+  registerAdmin,
+  loginAdmin,
+  refreshToken,
+  logout,
+};
