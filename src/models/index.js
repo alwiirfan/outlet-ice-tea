@@ -4,6 +4,11 @@ import Role from "./roles.js";
 import Cashier from "./cashiers.js";
 import Admin from "./admins.js";
 import { logger } from "../configs/logger.js";
+import rawMaterialSupplier from "./raw-material-suppliers.js";
+import rawMaterial from "./raw-materials.js";
+import useRawMaterial from "./use-raw-materials.js";
+import useRawMaterialDetail from "./use-raw-material-details.js";
+import unit from "./units.js";
 
 const userCredentials = db.define("userCredentials", UserCredential, {
   tableName: "user_credentials",
@@ -27,6 +32,87 @@ const admins = db.define("admins", Admin, {
   tableName: "admins",
   timestamps: false,
   underscored: true,
+});
+
+db.define("rawMaterialSuppliers", rawMaterialSupplier, {
+  tableName: "raw_material_suppliers",
+  timestamps: false,
+  underscored: true,
+});
+
+const rawMaterials = db.define("rawMaterials", rawMaterial, {
+  tableName: "raw_materials",
+  timestamps: false,
+  underscored: true,
+});
+
+const useRawMaterials = db.define("useRawMaterials", useRawMaterial, {
+  tableName: "use_raw_materials",
+  timestamps: false,
+  underscored: true,
+});
+
+const useRawMaterialDetails = db.define(
+  "useRawMaterialDetails",
+  useRawMaterialDetail,
+  {
+    tableName: "use_raw_material_details",
+    timestamps: false,
+    underscored: true,
+  }
+);
+
+const units = db.define("untis", unit, {
+  tableName: "units",
+  timestamps: false,
+  underscored: true,
+});
+
+// One-to-Many relationship between raw materials and units
+units.hasMany(rawMaterials, {
+  foreignKey: "unit_id",
+  foreignKeyConstraint: true,
+  as: "rawMaterials",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+
+rawMaterials.belongsTo(units, {
+  foreignKey: "unit_id",
+  foreignKeyConstraint: true,
+  as: "unit",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+
+// One-to-Many relationship between use raw materials and raw material details
+useRawMaterials.hasMany(useRawMaterialDetails, {
+  foreignKey: "use_raw_material_id",
+  as: "useRawMaterialDetails",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+
+useRawMaterialDetails.belongsTo(useRawMaterials, {
+  foreignKey: "use_raw_material_id",
+  as: "useRawMaterial",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+
+// One-to-Many relationship between raw materials and use raw material details
+rawMaterials.hasMany(useRawMaterialDetails, {
+  foreignKey: "raw_material_id",
+  as: "useRawMaterialDetails",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+
+useRawMaterialDetails.belongsTo(rawMaterials, {
+  foreignKey: "raw_material_id",
+  as: "rawMaterial",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
 });
 
 // Many-to-Many relationship between users and roles
@@ -60,7 +146,7 @@ roles.belongsToMany(userCredentials, {
   onUpdate: "CASCADE",
 });
 
-// One-to-One relationship between users and cashiers
+// One-to-One relationship between users and cashiers ( user_id in cashiers table )
 userCredentials.hasOne(cashiers, {
   foreignKey: "user_id",
   as: "cashier",
@@ -75,7 +161,7 @@ cashiers.belongsTo(userCredentials, {
   onUpdate: "CASCADE",
 });
 
-// One-to-One relationship between users and admins
+// One-to-One relationship between users and admins ( user_id in admins table )
 userCredentials.hasOne(admins, {
   foreignKey: "user_id",
   as: "admin",
@@ -91,7 +177,7 @@ admins.belongsTo(userCredentials, {
 });
 
 // Sync database with models
-db.sync()
+db.sync({ force: true })
   .then(() => {
     logger.info("Database synced");
     console.log(db.models);
