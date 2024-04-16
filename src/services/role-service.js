@@ -24,12 +24,7 @@ const create = async (request) => {
     created_at: new Date(),
   });
 
-  return {
-    id: createdRole.id,
-    role: createdRole.role.toUpperCase(),
-    created_at: createdRole.created_at,
-    updated_at: createdRole.updated_at !== null ? createdRole.updated_at : null,
-  };
+  return toRoleResponse(createdRole);
 };
 
 const getAll = async (request, page, limit) => {
@@ -103,7 +98,7 @@ const getByRoleName = async (roleName, transaction = null) => {
 const toRoleResponse = (role) => {
   return {
     id: role.id,
-    role: role.role,
+    role: role.role.toUpperCase(),
     created_at: role.created_at,
     updated_at: role.updated_at !== null ? role.updated_at : null,
   };

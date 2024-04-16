@@ -34,11 +34,15 @@ const admins = db.define("admins", Admin, {
   underscored: true,
 });
 
-db.define("rawMaterialSuppliers", rawMaterialSupplier, {
-  tableName: "raw_material_suppliers",
-  timestamps: false,
-  underscored: true,
-});
+const rawMaterialSuppliers = db.define(
+  "rawMaterialSuppliers",
+  rawMaterialSupplier,
+  {
+    tableName: "raw_material_suppliers",
+    timestamps: false,
+    underscored: true,
+  }
+);
 
 const rawMaterials = db.define("rawMaterials", rawMaterial, {
   tableName: "raw_materials",
@@ -62,10 +66,27 @@ const useRawMaterialDetails = db.define(
   }
 );
 
-const units = db.define("untis", unit, {
+const units = db.define("units", unit, {
   tableName: "units",
   timestamps: false,
   underscored: true,
+});
+
+// One-to-Many relationship between raw materila suppliers and units
+units.hasMany(rawMaterialSuppliers, {
+  foreignKey: "unit_id",
+  foreignKeyConstraint: true,
+  as: "rawMaterialSuppliers",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
+});
+
+rawMaterialSuppliers.belongsTo(units, {
+  foreignKey: "unit_id",
+  foreignKeyConstraint: true,
+  as: "unit",
+  onDelete: "RESTRICT",
+  onUpdate: "CASCADE",
 });
 
 // One-to-Many relationship between raw materials and units
@@ -177,7 +198,7 @@ admins.belongsTo(userCredentials, {
 });
 
 // Sync database with models
-db.sync({ force: true })
+db.sync()
   .then(() => {
     logger.info("Database synced");
     console.log(db.models);
@@ -185,5 +206,17 @@ db.sync({ force: true })
   .catch((err) => {
     logger.error(err);
   });
+
+// Connect database
+export const connectDatabase = async () => {
+  await db
+    .authenticate()
+    .then(() => {
+      logger.info("Connection has been established successfully.");
+    })
+    .catch((err) => {
+      logger.error("Unable to connect to the database:", err);
+    });
+};
 
 export default db;

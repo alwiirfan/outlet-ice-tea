@@ -5,7 +5,7 @@ const unit = {
     type: Sequelize.STRING(100),
     primaryKey: true,
   },
-  name: {
+  unit: {
     type: Sequelize.ENUM(
       "KILOGRAM",
       "GRAM",

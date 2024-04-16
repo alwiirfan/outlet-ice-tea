@@ -32,8 +32,6 @@ const getAll = async (req, res, next) => {
 
     const cashiers = await cashierService.getAll(request, page, limit);
 
-    console.log(cashiers);
-
     res.status(200).json({
       status: 200,
       message: "Cashiers retrieved successfully",

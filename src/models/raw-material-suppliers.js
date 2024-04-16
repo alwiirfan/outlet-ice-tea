@@ -5,16 +5,15 @@ const rawMaterialSupplier = {
     type: Sequelize.STRING(100),
     primaryKey: true,
   },
-  name: {
+  material_name: {
     type: Sequelize.STRING(100),
-    unique: true,
     allowNull: false,
   },
-  total: {
+  total_quantity: {
     type: Sequelize.INTEGER,
     allowNull: false,
   },
-  totalPrice: {
+  unit_price: {
     type: Sequelize.INTEGER,
     allowNull: false,
   },
