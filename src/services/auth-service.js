@@ -14,8 +14,9 @@ import cashierService from "./cashier-service.js";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
 import adminService from "./admin-service.js";
+import { sendEmailRegistration } from "../utils/email-util.js";
 
-const registerCashier = async (request) => {
+const registerCashier = async (request, protocol, host) => {
   // TODO intialize transaction
   let transaction;
 
@@ -105,6 +106,31 @@ const registerCashier = async (request) => {
 
     const createdCashier = await cashierService.create(cashier, transaction);
 
+    // TODO generate token
+    const token = jwt.sign(
+      {
+        id: userCredential.id,
+        username: userCredential.username,
+        email: userCredential.email,
+        role: role.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        algorithm: "HS256",
+        expiresIn: "5m",
+        subject: userCredential.username,
+      }
+    );
+
+    const link = `${protocol}://${host}/api/v1/auth/activate-account/${token}`;
+
+    // TODO send email
+    await sendEmailRegistration(
+      userCredential.email,
+      "Please activate your account",
+      link
+    );
+
     await transaction.commit();
 
     return toRegisterCashierResponse(createdCashier, userCredential, role);
@@ -113,6 +139,52 @@ const registerCashier = async (request) => {
       transaction.rollback();
     }
 
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
+const activateAccount = async (token) => {
+  let transaction;
+  try {
+    // TODO start transaction
+    transaction = await db.transaction();
+
+    // TODO verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userCredential = await db.models.userCredentials.findOne({
+      where: {
+        id: decoded.id,
+      },
+      transaction,
+    });
+
+    if (!userCredential) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    if (userCredential.activated) {
+      throw new ResponseError(409, "User already activated");
+    }
+
+    // TODO activate user
+    await db.models.userCredentials.update(
+      {
+        activated: true,
+      },
+      {
+        where: {
+          id: userCredential.id,
+        },
+        transaction,
+      }
+    );
+
+    // TODO commit transaction
+    await transaction.commit();
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
     throw new ResponseError(error.status, error.message);
   }
 };
@@ -240,7 +312,7 @@ const loginCashier = async (request) => {
   }
 };
 
-const registerAdmin = async (request) => {
+const registerAdmin = async (request, protocol, host) => {
   // TODO intialize transaction
   let transaction;
 
@@ -250,6 +322,8 @@ const registerAdmin = async (request) => {
 
     // TODO validate request
     const registerAdminRequest = validate(newAuthAdminSchemaRequest, request);
+
+    console.log(registerAdminRequest);
 
     if (
       registerAdminRequest.password !== registerAdminRequest.confirmPassword
@@ -323,6 +397,31 @@ const registerAdmin = async (request) => {
     };
 
     const createdAdmin = await adminService.create(admin, transaction);
+
+    // TODO generate token
+    const token = jwt.sign(
+      {
+        id: userCredential.id,
+        username: userCredential.username,
+        email: userCredential.email,
+        role: role.role,
+      },
+      process.env.JWT_SECRET,
+      {
+        algorithm: "HS256",
+        expiresIn: "5m",
+        subject: userCredential.username,
+      }
+    );
+
+    const link = `${protocol}://${host}/api/v1/auth/activate-account/${token}`;
+
+    // TODO send email
+    await sendEmailRegistration(
+      userCredential.email,
+      "Please activate your account",
+      link
+    );
 
     // TODO commit transaction
     await transaction.commit();
@@ -572,6 +671,7 @@ const toAdminResponse = (admin, userCredential, role) => {
     userCredential: {
       username: userCredential.username,
       email: userCredential.email,
+      activated: userCredential.activated,
     },
     roles: [role.role],
   };
@@ -579,6 +679,7 @@ const toAdminResponse = (admin, userCredential, role) => {
 
 export default {
   registerCashier,
+  activateAccount,
   loginCashier,
   registerAdmin,
   loginAdmin,

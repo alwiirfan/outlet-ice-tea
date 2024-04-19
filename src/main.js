@@ -2,6 +2,7 @@ import express from "express";
 import "dotenv/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import fileUpload from "express-fileupload";
 import { connectDatabase } from "./models/index.js";
 import { logger, loggerInfo } from "./configs/logger.js";
 import { cashierRouter } from "./routes/cashier-route.js";
@@ -13,11 +14,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(fileUpload());
 
 app.use(loggerInfo);
 
 connectDatabase();
 
+app.use(express.static("public"));
 app.use(cookieParser());
 app.use(publicRouter, verifyRouter, cashierRouter, adminRouter);
 

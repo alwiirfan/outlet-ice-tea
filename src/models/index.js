@@ -198,7 +198,7 @@ admins.belongsTo(userCredentials, {
 });
 
 // Sync database with models
-db.sync()
+db.sync({ force: true })
   .then(() => {
     logger.info("Database synced");
     console.log(db.models);

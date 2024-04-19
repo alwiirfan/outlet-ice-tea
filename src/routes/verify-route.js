@@ -4,6 +4,6 @@ import { verifyToken } from "../middlewares/auth-middleware.js";
 
 const verifyRouter = express.Router();
 
-verifyRouter.delete("/api/v1/logout", verifyToken, authController.logout);
+verifyRouter.delete("/api/v1/auth/logout", verifyToken, authController.logout);
 
 export { verifyRouter };

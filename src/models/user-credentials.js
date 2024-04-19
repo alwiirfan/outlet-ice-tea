@@ -19,7 +19,11 @@ const UserCredential = {
     type: Sequelize.STRING,
     allowNull: false,
   },
-
+  activated: {
+    type: Sequelize.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
   refresh_token: {
     type: Sequelize.TEXT,
   },

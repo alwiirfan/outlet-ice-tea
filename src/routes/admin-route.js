@@ -11,7 +11,7 @@ const adminRouter = express.Router();
 
 // auth cashiers
 adminRouter.post(
-  "/api/v1/register-cashier",
+  "/api/v1/auth/register-cashier",
   verifyTokenAdmin,
   authController.registerCashier
 );
