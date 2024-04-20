@@ -1,8 +1,11 @@
 import {
+  changePasswordSchemaRequest,
+  forgetPasswordSchemaRequest,
   loginAdminSchemaRequest,
   loginCashierSchemaRequest,
   newAuthAdminSchemaRequest,
   newAuthCashierSchemaRequest,
+  resetPasswordSchemaRequest,
 } from "../dto/request/auth-request.js";
 import { validate } from "../utils/validation-util.js";
 import db from "../configs/database.js";
@@ -14,7 +17,11 @@ import cashierService from "./cashier-service.js";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
 import adminService from "./admin-service.js";
-import { sendEmailRegistration } from "../utils/email-util.js";
+import {
+  sendEmailForgotPassword,
+  sendEmailRegistration,
+} from "../utils/email-util.js";
+import { request } from "express";
 
 const registerCashier = async (request, protocol, host) => {
   // TODO intialize transaction
@@ -114,10 +121,10 @@ const registerCashier = async (request, protocol, host) => {
         email: userCredential.email,
         role: role.role,
       },
-      process.env.JWT_SECRET,
+      process.env.EMAIL_JWT_SECRET,
       {
         algorithm: "HS256",
-        expiresIn: "5m",
+        expiresIn: "7d",
         subject: userCredential.username,
       }
     );
@@ -139,52 +146,6 @@ const registerCashier = async (request, protocol, host) => {
       transaction.rollback();
     }
 
-    throw new ResponseError(error.status, error.message);
-  }
-};
-
-const activateAccount = async (token) => {
-  let transaction;
-  try {
-    // TODO start transaction
-    transaction = await db.transaction();
-
-    // TODO verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userCredential = await db.models.userCredentials.findOne({
-      where: {
-        id: decoded.id,
-      },
-      transaction,
-    });
-
-    if (!userCredential) {
-      throw new ResponseError(404, "User not found");
-    }
-
-    if (userCredential.activated) {
-      throw new ResponseError(409, "User already activated");
-    }
-
-    // TODO activate user
-    await db.models.userCredentials.update(
-      {
-        activated: true,
-      },
-      {
-        where: {
-          id: userCredential.id,
-        },
-        transaction,
-      }
-    );
-
-    // TODO commit transaction
-    await transaction.commit();
-  } catch (error) {
-    if (transaction) {
-      transaction.rollback();
-    }
     throw new ResponseError(error.status, error.message);
   }
 };
@@ -212,6 +173,11 @@ const loginCashier = async (request) => {
 
     if (!userCredential) {
       throw new ResponseError(404, "User not found");
+    } else if (!userCredential.activated) {
+      throw new ResponseError(
+        401,
+        "Cashier not activated, please check your email"
+      );
     }
 
     // TODO compare password
@@ -406,10 +372,10 @@ const registerAdmin = async (request, protocol, host) => {
         email: userCredential.email,
         role: role.role,
       },
-      process.env.JWT_SECRET,
+      process.env.EMAIL_JWT_SECRET,
       {
         algorithm: "HS256",
-        expiresIn: "5m",
+        expiresIn: "7d",
         subject: userCredential.username,
       }
     );
@@ -457,6 +423,11 @@ const loginAdmin = async (request) => {
 
     if (!userCredential) {
       throw new ResponseError(404, "User not found");
+    } else if (!userCredential.activated) {
+      throw new ResponseError(
+        401,
+        "Admin not activated, please check your email"
+      );
     }
 
     // TODO compare password
@@ -560,6 +531,296 @@ const loginAdmin = async (request) => {
   }
 };
 
+const activateAccount = async (token) => {
+  let transaction;
+  try {
+    // TODO start transaction
+    transaction = await db.transaction();
+
+    // TODO verify token
+    const decoded = jwt.verify(token, process.env.EMAIL_JWT_SECRET);
+    const userCredential = await db.models.userCredentials.findOne({
+      where: {
+        id: decoded.id,
+      },
+      transaction,
+    });
+
+    if (!userCredential) {
+      throw new ResponseError(404, "User not found");
+    } else if (decoded.exp < Date.now() / 1000) {
+      throw new ResponseError(401, "Token expired");
+    }
+
+    // TODO activate user
+    await db.models.userCredentials.update(
+      {
+        activated: true,
+      },
+      {
+        where: {
+          id: userCredential.id,
+        },
+        transaction,
+      }
+    );
+
+    // TODO commit transaction
+    await transaction.commit();
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
+const forgetPassword = async (request, protocol, host) => {
+  let transaction;
+  try {
+    transaction = await db.transaction();
+
+    const forgetPasswordRequest = validate(
+      forgetPasswordSchemaRequest,
+      request
+    );
+
+    const userCredential = await db.models.userCredentials.findOne({
+      where: {
+        username: forgetPasswordRequest.username,
+      },
+      transaction,
+    });
+
+    if (!userCredential) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    if (!userCredential.activated) {
+      throw new ResponseError(
+        401,
+        "User not activated, please check your email"
+      );
+    }
+
+    const forgetPasswordToken = jwt.sign(
+      {
+        id: userCredential.id,
+        username: userCredential.username,
+        email: userCredential.email,
+        role: userCredential.role,
+      },
+      process.env.FORGET_PASSWORD_JWT_SECRET,
+      {
+        algorithm: "HS256",
+        expiresIn: "5m",
+        subject: userCredential.username,
+      }
+    );
+
+    const link = `${protocol}://${host}/api/v1/auth/reset-password/${userCredential.id}/${forgetPasswordToken}`;
+
+    // TODO send email
+    await sendEmailForgotPassword(
+      userCredential.email,
+      "Reset your password",
+      link
+    );
+
+    await transaction.commit();
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
+const getResetPassword = async (id, token) => {
+  let transaction;
+  try {
+    transaction = await db.transaction();
+
+    const decoded = jwt.verify(token, process.env.FORGET_PASSWORD_JWT_SECRET);
+
+    const userCredential = await db.models.userCredentials.findOne({
+      where: {
+        username: decoded.username,
+      },
+      transaction,
+    });
+
+    if (!userCredential) {
+      throw new ResponseError(404, "User not found");
+    } else if (!userCredential.activated) {
+      throw new ResponseError(
+        401,
+        "User not activated, please check your email"
+      );
+    } else if (decoded.exp < Date.now() / 1000) {
+      throw new ResponseError(401, "Token expired");
+    } else if (id !== userCredential.id) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    await transaction.commit();
+
+    return {
+      username: userCredential.username,
+      email: userCredential.email,
+      token: token,
+    };
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
+
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
+const resetPassword = async (request, token) => {
+  let transaction;
+  try {
+    transaction = await db.transaction();
+
+    if (!token) {
+      throw new ResponseError(400, "Token not found");
+    }
+
+    const resetPasswordRequest = validate(resetPasswordSchemaRequest, request);
+
+    if (
+      resetPasswordRequest.password !== resetPasswordRequest.confirmPassword
+    ) {
+      throw new ResponseError(400, "Password and confirm password not match");
+    }
+
+    const hashedPassword = await bcrypt.hash(resetPasswordRequest.password, 10);
+
+    const decoded = jwt.verify(token, process.env.FORGET_PASSWORD_JWT_SECRET);
+
+    const userCredential = await db.models.userCredentials.findOne({
+      where: {
+        username: decoded.username,
+      },
+      transaction,
+    });
+
+    if (!userCredential) {
+      throw new ResponseError(404, "User not found");
+    } else if (!userCredential.activated) {
+      throw new ResponseError(
+        401,
+        "User not activated, please check your email"
+      );
+    } else if (decoded.exp < Date.now() / 1000) {
+      throw new ResponseError(401, "Token expired");
+    } else if (decoded.id !== userCredential.id) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    await db.models.userCredentials.update(
+      {
+        password: hashedPassword,
+      },
+      {
+        where: {
+          id: userCredential.id,
+        },
+        transaction,
+      }
+    );
+
+    await transaction.commit();
+
+    return {
+      username: userCredential.username,
+      email: userCredential.email,
+    };
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
+
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
+const changePassword = async (request) => {
+  let transaction;
+  try {
+    transaction = await db.transaction();
+
+    const changePasswordRequest = validate(
+      changePasswordSchemaRequest,
+      request
+    );
+
+    const userCredential = await db.models.userCredentials.findOne({
+      where: {
+        id: changePasswordRequest.id,
+      },
+      transaction,
+    });
+
+    const passwordMatch = await bcrypt.compare(
+      changePasswordRequest.oldPassword,
+      userCredential.password
+    );
+
+    if (!userCredential) {
+      throw new ResponseError(404, "User not found");
+    } else if (!userCredential.activated) {
+      throw new ResponseError(
+        401,
+        "User not activated, please check your email"
+      );
+    } else if (!passwordMatch) {
+      throw new ResponseError(401, "Old password not match");
+    } else if (
+      changePasswordRequest.newPassword !==
+      changePasswordRequest.confirmPassword
+    ) {
+      throw new ResponseError(400, "Password and confirm password not match");
+    }
+
+    const hashedPassword = bcrypt.hashSync(
+      changePasswordRequest.newPassword,
+      10
+    );
+
+    const updatedUserCredential = await db.models.userCredentials.update(
+      {
+        password: hashedPassword,
+      },
+      {
+        where: {
+          id: changePasswordRequest.id,
+        },
+        transaction,
+      }
+    );
+
+    if (!updatedUserCredential) {
+      throw new ResponseError(404, "User not found");
+    }
+
+    await transaction.commit();
+
+    return {
+      username: userCredential.username,
+      email: userCredential.email,
+    };
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
+
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
 const refreshToken = async (request) => {
   try {
     // TODO find user credential by request cookie with name "refreshToken"
@@ -653,6 +914,7 @@ const toRegisterCashierResponse = (cashier, userCredential, role) => {
     userCredential: {
       username: userCredential.username,
       email: userCredential.email,
+      activated: userCredential.activated,
     },
     roles: [role.role],
   };
@@ -679,10 +941,14 @@ const toAdminResponse = (admin, userCredential, role) => {
 
 export default {
   registerCashier,
-  activateAccount,
   loginCashier,
   registerAdmin,
   loginAdmin,
+  forgetPassword,
+  getResetPassword,
+  resetPassword,
+  activateAccount,
+  changePassword,
   refreshToken,
   logout,
 };

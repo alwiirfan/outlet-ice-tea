@@ -73,10 +73,49 @@ const refreshCashierTokenSchemaRequest = Joi.object({
   refreshToken: Joi.string().required(),
 });
 
+const forgetPasswordSchemaRequest = Joi.object({
+  username: Joi.string().min(4).max(100).required(),
+});
+
+const resetPasswordSchemaRequest = Joi.object({
+  password: Joi.string()
+    .min(4)
+    .max(100)
+    .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$"))
+    .required(),
+  confirmPassword: Joi.string()
+    .min(4)
+    .max(100)
+    .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$"))
+    .required(),
+});
+
+const changePasswordSchemaRequest = Joi.object({
+  id: Joi.string().required(),
+  oldPassword: Joi.string()
+    .min(4)
+    .max(100)
+    .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$"))
+    .required(),
+  newPassword: Joi.string()
+    .min(4)
+    .max(100)
+    .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$"))
+    .required(),
+  confirmPassword: Joi.string()
+    .min(4)
+    .max(100)
+    .pattern(new RegExp("^[a-zA-Z0-9]{3,30}$"))
+    .required(),
+});
+
 export {
   newAuthCashierSchemaRequest,
   loginCashierSchemaRequest,
   newAuthAdminSchemaRequest,
   loginAdminSchemaRequest,
   refreshCashierTokenSchemaRequest,
+  forgetPasswordSchemaRequest,
+  resetPasswordSchemaRequest,
+  changePasswordSchemaRequest,
 };

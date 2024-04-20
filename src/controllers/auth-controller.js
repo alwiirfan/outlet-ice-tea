@@ -19,20 +19,6 @@ const registerCashier = async (req, res, next) => {
   }
 };
 
-const activateAccount = async (req, res, next) => {
-  try {
-    const response = await authService.activateAccount(req.params.token);
-    res.status(200).json({
-      status: 200,
-      message: "Account activated successfully",
-      data: response,
-    });
-  } catch (error) {
-    const status = error.status || 500;
-    next(res.status(status).json({ status: status, message: error.message }));
-  }
-};
-
 const loginCashier = async (req, res, next) => {
   try {
     const response = await authService.loginCashier(req.body);
@@ -72,10 +58,8 @@ const registerAdmin = async (req, res, next) => {
       data: response,
     });
   } catch (error) {
-    // const status = error.status || 500;
-    // next(res.status(status).json({ status: status, message: error.message }));
-
-    next(error);
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
   }
 };
 
@@ -89,14 +73,90 @@ const loginAdmin = async (req, res, next) => {
       secure: process.env.NODE_ENV === "production",
     });
 
-    res.status(201).json({
-      status: 201,
+    res.status(200).json({
+      status: 200,
       message: "Admin logged in successfully",
       data: {
         username: response.username,
         accessToken: response.accessToken,
         roles: response.roles,
       },
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
+  }
+};
+
+const activateAccount = async (req, res, next) => {
+  try {
+    const response = await authService.activateAccount(req.params.token);
+    res.status(200).json({
+      status: 200,
+      message: "Account activated successfully",
+      data: response,
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
+  }
+};
+
+const forgetPassword = async (req, res, next) => {
+  const request = req.body;
+  const protocol = req.protocol;
+  const host = req.get("host");
+  try {
+    await authService.forgetPassword(request, protocol, host);
+    res.status(200).json({
+      status: 200,
+      message: "Password reset link sent to your email",
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
+  }
+};
+
+const getResetPassword = async (req, res, next) => {
+  const { id, token } = req.params;
+  try {
+    const response = await authService.getResetPassword(id, token);
+    res.status(200).json({
+      status: 200,
+      message: "Success to get reset password link",
+      data: response,
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  const token = req.query.token;
+  const request = req.body;
+  try {
+    const response = await authService.resetPassword(request, token);
+    res.status(200).json({
+      status: 200,
+      message: "Password changed successfully",
+      data: response,
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
+  }
+};
+
+const changePassword = async (req, res, next) => {
+  const request = req.body;
+  try {
+    const response = await authService.changePassword(request);
+    res.status(200).json({
+      status: 200,
+      message: "Password changed successfully",
+      data: response,
     });
   } catch (error) {
     const status = error.status || 500;
@@ -143,6 +203,10 @@ export default {
   loginCashier,
   registerAdmin,
   loginAdmin,
+  forgetPassword,
+  getResetPassword,
+  resetPassword,
   refreshToken,
+  changePassword,
   logout,
 };
