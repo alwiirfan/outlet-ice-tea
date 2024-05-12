@@ -72,7 +72,7 @@ const units = db.define("units", unit, {
   underscored: true,
 });
 
-// One-to-Many relationship between raw materila suppliers and units
+// One-to-Many relationship between raw material suppliers and units
 units.hasMany(rawMaterialSuppliers, {
   foreignKey: "unit_id",
   foreignKeyConstraint: true,
@@ -197,8 +197,8 @@ admins.belongsTo(userCredentials, {
   onUpdate: "CASCADE",
 });
 
-// Sync database with models
-db.sync({ force: true })
+// Sync database with models { force: is true = drop table and create again }
+db.sync()
   .then(() => {
     logger.info("Database synced");
     console.log(db.models);

@@ -14,6 +14,22 @@ const create = async (req, res, next) => {
   }
 };
 
+const getById = async (req, res, next) => {
+  try {
+    const rawMaterialSupplier = await rawMaterialSupplierService.getById(
+      req.params.id
+    );
+    res.status(200).json({
+      status: 200,
+      message: "Raw Material Supplier retrieved successfully",
+      data: rawMaterialSupplier,
+    });
+  } catch (error) {
+    const status = error.status || 500;
+    next(res.status(status).json({ status: status, message: error.message }));
+  }
+};
+
 const getAll = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 0;
@@ -50,5 +66,6 @@ const getAll = async (req, res, next) => {
 };
 export default {
   create,
+  getById,
   getAll,
 };

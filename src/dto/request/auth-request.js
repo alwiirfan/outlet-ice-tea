@@ -1,5 +1,6 @@
 import Joi from "joi";
 
+// reister cashier request
 const newAuthCashierSchemaRequest = Joi.object({
   username: Joi.string().min(4).max(100).required(),
   email: Joi.string()
@@ -27,6 +28,7 @@ const newAuthCashierSchemaRequest = Joi.object({
   postalCode: Joi.string().min(2).max(10).required(),
 });
 
+// login cashier request
 const loginCashierSchemaRequest = Joi.object({
   username: Joi.string().min(4).max(100).required(),
   password: Joi.string()
@@ -36,6 +38,7 @@ const loginCashierSchemaRequest = Joi.object({
     .required(),
 });
 
+// register admin request
 const newAuthAdminSchemaRequest = Joi.object({
   username: Joi.string().min(4).max(100).required(),
   email: Joi.string()
@@ -59,6 +62,7 @@ const newAuthAdminSchemaRequest = Joi.object({
   pin: Joi.string().min(6).max(6).required(),
 });
 
+// login admin request
 const loginAdminSchemaRequest = Joi.object({
   username: Joi.string().min(4).max(100).required(),
   password: Joi.string()
@@ -69,14 +73,17 @@ const loginAdminSchemaRequest = Joi.object({
   pin: Joi.string().min(6).max(6).required(),
 });
 
+// refresh token request
 const refreshCashierTokenSchemaRequest = Joi.object({
   refreshToken: Joi.string().required(),
 });
 
+// forget password request
 const forgetPasswordSchemaRequest = Joi.object({
   username: Joi.string().min(4).max(100).required(),
 });
 
+// reset password request
 const resetPasswordSchemaRequest = Joi.object({
   password: Joi.string()
     .min(4)
@@ -90,6 +97,7 @@ const resetPasswordSchemaRequest = Joi.object({
     .required(),
 });
 
+// change password request
 const changePasswordSchemaRequest = Joi.object({
   id: Joi.string().required(),
   oldPassword: Joi.string()

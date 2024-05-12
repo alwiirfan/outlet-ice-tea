@@ -32,6 +32,7 @@ adminRouter.put("/api/v1/admins", verifyTokenAdmin, adminController.update);
 
 // units
 adminRouter.post("/api/v1/units", verifyTokenAdmin, unitController.create);
+adminRouter.get("/api/v1/units", verifyTokenAdmin, unitController.getAll);
 
 // raw material supplier
 adminRouter.post(
@@ -43,6 +44,11 @@ adminRouter.get(
   "/api/v1/raw-material-suppliers",
   verifyTokenAdmin,
   rawMaterialSupplierController.getAll
+);
+adminRouter.get(
+  "/api/v1/raw-material-suppliers/:id",
+  verifyTokenAdmin,
+  rawMaterialSupplierController.getById
 );
 
 export { adminRouter };

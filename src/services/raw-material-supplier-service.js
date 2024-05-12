@@ -22,6 +22,10 @@ const create = async (request) => {
       transaction
     );
 
+    if (!unit) {
+      throw new ResponseError(404, "Unit not found");
+    }
+
     const createdRawMaterialSupplier =
       await db.models.rawMaterialSuppliers.create(
         {
@@ -40,6 +44,44 @@ const create = async (request) => {
     await transaction.commit();
 
     return toRawMaterialSupplierResponse(createdRawMaterialSupplier, unit);
+  } catch (error) {
+    if (transaction) {
+      transaction.rollback();
+    }
+
+    throw new ResponseError(error.status, error.message);
+  }
+};
+
+const getById = async (id) => {
+  let transaction;
+
+  try {
+    transaction = await db.transaction();
+
+    // get raw material supplier by id
+    const rawMaterialSupplier = await db.models.rawMaterialSuppliers.findOne({
+      where: { id: id },
+      transaction,
+    });
+
+    if (!rawMaterialSupplier) {
+      throw new ResponseError(404, "Raw Material Supplier not found");
+    }
+
+    // get unit by id
+    const unit = await unitService.getById(
+      rawMaterialSupplier.unit_id,
+      transaction
+    );
+
+    console.log(rawMaterialSupplier);
+
+    const response = toRawMaterialSupplierResponse(rawMaterialSupplier, unit);
+
+    return {
+      data: response,
+    };
   } catch (error) {
     if (transaction) {
       transaction.rollback();
@@ -78,7 +120,7 @@ const getAll = async (request, page, limit) => {
       model: db.models.units,
       as: "unit",
       where: {
-        [Op.or]: [{ unit: { [Op.like]: `%${unit.toUpperCase()}%` } }],
+        [Op.or]: [{ unit: { [Op.like]: `${unit.toUpperCase()}` } }],
       },
     },
   });
@@ -109,7 +151,7 @@ const getAll = async (request, page, limit) => {
       model: db.models.units,
       as: "unit",
       where: {
-        [Op.or]: [{ unit: { [Op.like]: `%${unit.toUpperCase()}%` } }],
+        [Op.or]: [{ unit: { [Op.like]: `${unit.toUpperCase()}` } }],
       },
     },
     offset: offset,
@@ -147,4 +189,4 @@ const toRawMaterialSupplierResponse = (rawMaterialSupplier, unit) => {
   };
 };
 
-export default { create, getAll };
+export default { create, getById, getAll };
